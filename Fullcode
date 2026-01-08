@@ -1,0 +1,107 @@
+//imports all libraries
+#include <Password.h>
+#include <Keypad.h>
+#include <Servo.h>
+
+int red = 4;
+int green = 3;
+
+Servo myservo;
+Password password = Password("AB67"); //Sets password
+
+const byte ROWS = 4; //Sets 4 rows
+const byte COLS = 4; //Sets 4 columns
+
+//Sets button map
+char keys[ROWS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+  
+};
+
+byte rowPins[ROWS] = {13,12,11,10}; //These signal pins control rows
+byte colPins[COLS] = {9,8,7,6}; //These signal pins control columns
+
+Keypad keypad = Keypad(makeKeymap(keys),rowPins,colPins,ROWS,COLS);
+
+//code for relocking
+long unlockTime = 0;
+bool unlocked = false;
+
+void setup(){
+  pinMode(green, OUTPUT);
+  pinMode(red, OUTPUT);
+  myservo.attach(5);
+  
+  Serial.begin(9600);
+  delay(200);
+  
+  keypad.addEventListener(keypadEvent); //detect key presses 
+
+  myservo.write(0); //set servo initial position
+}
+
+void loop(){
+  keypad.getKey();
+
+  //lock back
+  if (unlocked && millis() - unlockTime >= 3000) {
+    myservo.write(0);
+    digitalWrite(green, LOW);
+    digitalWrite(red, HIGH);
+    unlocked = false;
+  }
+}
+
+void keypadEvent(KeypadEvent eKey){
+  if (keypad.getState() == PRESSED){
+    Serial.print("Pressed: ");
+    Serial.println(eKey);
+
+    if (eKey == '#') {
+      password.reset();
+      return;
+    }
+
+    if (eKey == '*') {
+      checkPassword();
+      password.reset();   // 🔥 reset immediately
+      return;
+    }
+
+    password.append(eKey);
+  }
+}
+                           
+void checkPassword(){
+  if(password.evaluate()) {
+    Serial.println("Success");
+    delay(3000);
+    myservo.write(90);
+    digitalWrite(green, HIGH);
+    digitalWrite(red, LOW);
+    unlocked = true; //lock back
+    unlockTime = millis();
+  }
+
+  else{
+    Serial.println("Incorrect");
+    myservo.write(0);
+    digitalWrite(green, LOW);
+    digitalWrite(red, HIGH);
+  }
+    
+}
+
+
+
+
+
+
+
+
+
+
+
